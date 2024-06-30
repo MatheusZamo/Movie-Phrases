@@ -16,48 +16,34 @@ const app = initializeApp(firebaseConfig)
 const db = getFirestore(app)
 const provider = new GoogleAuthProvider()
 
+const phrasesContainer = document.querySelector('[data-js = "phrases-container"]')
+
+const user = null
+
+const showAppropriatedNavLinks = () => {
+  const lis = [...document.querySelector('[data-js="nav-ul"]').children]
+
+  lis.forEach(li => {
+    const liShouldBeVisible = li.dataset.js.includes(user ? 'logged-in' : 'logged-out')
+
+    if (liShouldBeVisible) {
+      li.classList.remove('hide')
+      return
+    }
+
+    li.classList.add('hide')
+  })
+
+  if (!user) {
+    const loginMessage = document.createElement('h5')
+
+    loginMessage.textContent = 'Faça login para ver as frases'
+    loginMessage.classList.add('center-align','white-text')
+    phrasesContainer.append(loginMessage)
+  }
+}
+
+showAppropriatedNavLinks()
 
 
 
-
-
-
-// const getData = async () => {
-//     const querySnapshot = await getDocs(collection(db, 'frases'))
-//     querySnapshot.forEach(doc => console.log(doc.data()))
-// } 
-
-// getData()
-
-
-const loggedOut = document.querySelector('[data-js="logged-out"]')
-const modalLogin = document.querySelector('[data-js="modal-login"]')
-const buttonGoogle = document.querySelector('[data-js="button-form"]')
-
-loggedOut.addEventListener('click', () => {
-  console.log('oi')
-  modalLogin.classList.add('modal-login')
-})
-
-buttonGoogle.addEventListener('click', () => {
-  const auth = getAuth();
-  signInWithPopup(auth, provider)
-    .then((result) => {
-    // This gives you a Google Access Token. You can use it to access the Google API.
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const token = credential.accessToken;
-    // The signed-in user info.
-      const user = result.user;
-    // IdP data available using getAdditionalUserInfo(result)
-    // ...
-    }).catch((error) => {
-    // Handle Errors here.
-      const errorCode = error.code;
-      const errorMessage = error.message;
-    // The email of the user's account used.
-      const email = error.customData.email;
-    // The AuthCredential type that was used.
-      const credential = GoogleAuthProvider.credentialFromError(error);
-    // ...
-  });
-})
