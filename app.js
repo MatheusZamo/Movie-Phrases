@@ -43,7 +43,13 @@ const showAppropriatedNavLinks = () => {
   }
 }
 
+const initModals = () =>  {
+  const elems = document.querySelectorAll('.modal')
+  M.Modal.init(elems)
+}
+
 showAppropriatedNavLinks()
 
+document.addEventListener('DOMContentLoaded', initModals)
 
 
