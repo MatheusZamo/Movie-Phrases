@@ -14,9 +14,25 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 const db = getFirestore(app)
+const auth = getAuth(app)
 const provider = new GoogleAuthProvider()
 
+
 const phrasesContainer = document.querySelector('[data-js = "phrases-container"]')
+const buttonGoogle = document.querySelector('[data-js="button-google"]')
+
+const login = async () => {
+  try{
+    const result = await signInWithPopup(auth, provider)
+    console.log(result)
+    const modalLogin = document.querySelector('[data-modal="login"]')
+    M.Modal.getInstance(modalLogin).close()
+  } catch (error) {
+    console.log('error:', error)
+  }
+}
+
+buttonGoogle.addEventListener('click',login)
 
 const user = null
 
@@ -43,7 +59,13 @@ const showAppropriatedNavLinks = () => {
   }
 }
 
+const initModals = () =>  {
+  const elems = document.querySelectorAll('.modal')
+  M.Modal.init(elems)
+}
+
 showAppropriatedNavLinks()
 
+initModals()
 
 
