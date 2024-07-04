@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-app.js"
-import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js"
+import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js"
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-auth.js"
 
 const firebaseConfig = {
@@ -16,17 +16,34 @@ const app = initializeApp(firebaseConfig)
 const db = getFirestore(app)
 const auth = getAuth(app)
 const provider = new GoogleAuthProvider()
-
+const collectionPhrases = collection(db, 'phrases')
 
 const buttonGoogle = document.querySelector('[data-js="button-google"]')
 const buttonLogout = document.querySelector('[data-js="logout"]')
+const phrasesList = document.querySelector('[data-js="phrases-list"]')
 
-const addPhrase = e => {
+const addPhrase = async e => {
   e.preventDefault()
-  console.log('Callback do envio do form executado')
+
+  try {
+    await addDoc(collectionPhrases, {
+      movieTitle: DOMPurify.sanitize(e.target.title.value),
+      phrase: DOMPurify.sanitize(e.target.phrase.value)
+    })
+
+    e.target.reset()
+
+    const modalAddPhrase = document.querySelector('[data-modal="add-phrase"]')
+    M.Modal.getInstance(modalAddPhrase).close()
+
+  } catch(error) {
+    console.log(error)
+  }
 }
 
-const showAppropriatedNavLinks = user => {
+const initCollapsibles = () => M.Collapsible.init(phrasesList)
+
+const handleAuthStateChanged = user => {
   console.log(user)
 
   const lis = [...document.querySelector('[data-js="nav-ul"]').children]
@@ -40,7 +57,8 @@ const showAppropriatedNavLinks = user => {
     }
 
     li.classList.add('hide')
-  })
+  }
+)
 
   const loginMessageExists = document.querySelector('[data-js="login-message"]')
   loginMessageExists?.remove()
@@ -55,11 +73,38 @@ const showAppropriatedNavLinks = user => {
     loginMessage.classList.add('center-align','white-text')
     loginMessage.setAttribute('data-js','login-message')
     phrasesContainer.append(loginMessage)
+
     formAddPhrase.removeEventListener('submit', addPhrase)
+    buttonLogout.removeEventListener('click', logout)
+    buttonGoogle.addEventListener('click', login)
+    phrasesList.innerHTML = ''
     return
   }
 
+  buttonGoogle.removeEventListener('click', login)
   formAddPhrase.addEventListener('submit', addPhrase)
+  buttonLogout.addEventListener('click', logout)
+  onSnapshot(collectionPhrases, snapshot => {
+    const documentFragment = document.createDocumentFragment()
+
+    snapshot.docChanges().forEach(docChange => {
+      const liPhrase = document.createElement('li')
+      const movieTitleContainer = document.createElement('div')
+      const phraseContainer = document.createElement('div')
+      const { movieTitle, phrase } = docChange.doc.data()
+
+      movieTitleContainer.textContent = DOMPurify.sanitize(movieTitle)
+      phraseContainer.textContent = DOMPurify.sanitize(phrase)
+      movieTitleContainer.setAttribute('class','collapsible-header blue-grey-text text-lighten-5 blue-grey darken-4')
+      phraseContainer.setAttribute('class','collapsible-body blue-grey-text text-lighten-5 blue-grey darken-3')
+
+      liPhrase.append(movieTitleContainer, phraseContainer)
+      documentFragment.append(liPhrase)
+    })
+
+    phrasesList.append(documentFragment)
+  })
+  initCollapsibles()
 }
 
 const initModals = () =>  {
@@ -87,7 +132,7 @@ const logout = async () => {
   }
 }
 
-onAuthStateChanged(auth, showAppropriatedNavLinks)
+onAuthStateChanged(auth, handleAuthStateChanged)
 buttonGoogle.addEventListener('click',login)
 buttonLogout.addEventListener('click', logout)
 
