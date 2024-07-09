@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-app.js"
-import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js"
+import { getFirestore, collection, addDoc, doc, getDoc, setDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js"
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-auth.js"
 
 const firebaseConfig = {
@@ -22,13 +22,14 @@ const buttonGoogle = document.querySelector('[data-js="button-google"]')
 const buttonLogout = document.querySelector('[data-js="logout"]')
 const phrasesList = document.querySelector('[data-js="phrases-list"]')
 
-const addPhrase = async e => {
+const addPhrase = async (e, user) => {
   e.preventDefault()
 
   try {
     await addDoc(collectionPhrases, {
       movieTitle: DOMPurify.sanitize(e.target.title.value),
-      phrase: DOMPurify.sanitize(e.target.phrase.value)
+      phrase: DOMPurify.sanitize(e.target.phrase.value),
+      userId: DOMPurify.sanitize(user.uid)
     })
 
     e.target.reset()
@@ -41,9 +42,35 @@ const addPhrase = async e => {
   }
 }
 
+const initModals = () =>  {
+  const elems = document.querySelectorAll('.modal')
+  M.Modal.init(elems)
+}
+
 const initCollapsibles = () => M.Collapsible.init(phrasesList)
 
-const handleAuthStateChanged = user => {
+const login = async () => {
+  try{
+    await signInWithPopup(auth, provider)
+
+    const modalLogin = document.querySelector('[data-modal="login"]')
+    M.Modal.getInstance(modalLogin).close()
+  } catch (error) {
+    console.log('error:', error)
+  }
+}
+
+const logout = async unsubscribe => {
+  try { 
+    await signOut(auth)
+    unsubscribe()
+    console.log('Usuario foi deslogado')
+  } catch (error){
+    console.log('error:', error)
+  }
+}
+
+const handleAuthStateChanged = async user => {
   console.log(user)
 
   const lis = [...document.querySelector('[data-js="nav-ul"]').children]
@@ -64,6 +91,8 @@ const handleAuthStateChanged = user => {
   loginMessageExists?.remove()
 
   const formAddPhrase = document.querySelector('[  data-js="add-phrase-form"]')
+  const accountDetailsContainer = document.querySelector('[data-js="account-details"]')
+  const accountDetails = document.createElement('p')
 
   if (!user) {
     const phrasesContainer = document.querySelector('[data-js = "phrases-container"]')
@@ -74,17 +103,35 @@ const handleAuthStateChanged = user => {
     loginMessage.setAttribute('data-js','login-message')
     phrasesContainer.append(loginMessage)
 
-    formAddPhrase.removeEventListener('submit', addPhrase)
-    buttonLogout.removeEventListener('click', logout)
+    formAddPhrase.onsubmit = null
+    buttonLogout.onclick = null
     buttonGoogle.addEventListener('click', login)
     phrasesList.innerHTML = ''
+    accountDetailsContainer.innerHTML = ''
     return
   }
 
+  try {
+    const userDocRef = doc(db, 'users', user.uid)
+    const docSnapshot = await getDoc(userDocRef)
+
+    if(!docSnapshot.exists()) {
+      await setDoc(userDocRef, {
+        name : DOMPurify.sanitize(user.displayName),
+        email : DOMPurify.sanitize(user.email),
+        userId : DOMPurify.sanitize(user.uid)
+      })
+    }
+  } catch (error) {
+    console.log('Erro ao tentar registrar usuário:', error)
+  }
+
   buttonGoogle.removeEventListener('click', login)
-  formAddPhrase.addEventListener('submit', addPhrase)
-  buttonLogout.addEventListener('click', logout)
-  onSnapshot(collectionPhrases, snapshot => {
+  formAddPhrase.onsubmit = e => addPhrase(e, user)
+
+  const queryPhrases = query(collectionPhrases, where('userId', '==', user.uid))
+  
+  const unsubscribe = onSnapshot(queryPhrases, snapshot => {
     const documentFragment = document.createDocumentFragment()
 
     snapshot.docChanges().forEach(docChange => {
@@ -102,40 +149,14 @@ const handleAuthStateChanged = user => {
       documentFragment.append(liPhrase)
     })
 
+    buttonLogout.onclick = () => logout(unsubscribe)
     phrasesList.append(documentFragment)
+    accountDetails.textContent = DOMPurify.sanitize(`${user.displayName} | ${user.email}`)
+    accountDetailsContainer.append(accountDetails)
   })
   initCollapsibles()
 }
 
-const initModals = () =>  {
-  const elems = document.querySelectorAll('.modal')
-  M.Modal.init(elems)
-}
-
-const login = async () => {
-  try{
-    await signInWithPopup(auth, provider)
-
-    const modalLogin = document.querySelector('[data-modal="login"]')
-    M.Modal.getInstance(modalLogin).close()
-  } catch (error) {
-    console.log('error:', error)
-  }
-}
-
-const logout = async () => {
-  try { 
-    await signOut(auth)
-    console.log('Usuario foi deslogado')
-  } catch (error){
-    console.log('error:', error)
-  }
-}
-
 onAuthStateChanged(auth, handleAuthStateChanged)
-buttonGoogle.addEventListener('click',login)
-buttonLogout.addEventListener('click', logout)
 
 initModals()
-
-
