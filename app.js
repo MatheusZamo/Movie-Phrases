@@ -21,6 +21,14 @@ const collectionPhrases = collection(db, 'phrases')
 const buttonGoogle = document.querySelector('[data-js="button-google"]')
 const buttonLogout = document.querySelector('[data-js="logout"]')
 const phrasesList = document.querySelector('[data-js="phrases-list"]')
+const formAddPhrase = document.querySelector('[  data-js="add-phrase-form"]')
+const accountDetailsContainer = document.querySelector('[data-js="account-details"]')
+const accountDetails = document.createElement('p')
+
+const closeModalAddPhrase = () => {
+  const modalAddPhrase = document.querySelector('[data-modal="add-phrase"]')
+  M.Modal.getInstance(modalAddPhrase).close()
+}
 
 const addPhrase = async (e, user) => {
   e.preventDefault()
@@ -29,14 +37,12 @@ const addPhrase = async (e, user) => {
     await addDoc(collectionPhrases, {
       movieTitle: DOMPurify.sanitize(e.target.title.value),
       phrase: DOMPurify.sanitize(e.target.phrase.value),
-      userId: DOMPurify.sanitize(user.uid)
+      userId: user.uid
     })
 
     e.target.reset()
-
-    const modalAddPhrase = document.querySelector('[data-modal="add-phrase"]')
-    M.Modal.getInstance(modalAddPhrase).close()
-
+    closeModalAddPhrase()
+ 
   } catch(error) {
     console.log(error)
   }
@@ -70,13 +76,11 @@ const logout = async unsubscribe => {
   }
 }
 
-const handleAuthStateChanged = async user => {
-  console.log(user)
-
+const renderLinks = ({ userExists }) => {
   const lis = [...document.querySelector('[data-js="nav-ul"]').children]
 
   lis.forEach(li => {
-    const liShouldBeVisible = li.dataset.js.includes(user ? 'logged-in' : 'logged-out')
+    const liShouldBeVisible = li.dataset.js.includes(userExists ? 'logged-in' : 'logged-out')
 
     if (liShouldBeVisible) {
       li.classList.remove('hide')
@@ -86,52 +90,50 @@ const handleAuthStateChanged = async user => {
     li.classList.add('hide')
   }
 )
+}
 
+const removeLoginMessage = () => {
   const loginMessageExists = document.querySelector('[data-js="login-message"]')
   loginMessageExists?.remove()
+}
 
-  const formAddPhrase = document.querySelector('[  data-js="add-phrase-form"]')
-  const accountDetailsContainer = document.querySelector('[data-js="account-details"]')
-  const accountDetails = document.createElement('p')
+const handleAnonymousUser = () => {
+  const phrasesContainer = document.querySelector('[data-js = "phrases-container"]')
+  const loginMessage = document.createElement('h5')
 
-  if (!user) {
-    const phrasesContainer = document.querySelector('[data-js = "phrases-container"]')
-    const loginMessage = document.createElement('h5')
+  loginMessage.textContent = 'Faça login para ver as frases'
+  loginMessage.classList.add('center-align','white-text')
+  loginMessage.setAttribute('data-js','login-message')
+  phrasesContainer.append(loginMessage)
 
-    loginMessage.textContent = 'Faça login para ver as frases'
-    loginMessage.classList.add('center-align','white-text')
-    loginMessage.setAttribute('data-js','login-message')
-    phrasesContainer.append(loginMessage)
+  formAddPhrase.onsubmit = null
+  buttonLogout.onclick = null
+  buttonGoogle.addEventListener('click', login)
+  phrasesList.innerHTML = ''
+  accountDetailsContainer.innerHTML = ''
+}
 
-    formAddPhrase.onsubmit = null
-    buttonLogout.onclick = null
-    buttonGoogle.addEventListener('click', login)
-    phrasesList.innerHTML = ''
-    accountDetailsContainer.innerHTML = ''
-    return
-  }
-
+const createUserDocument = async user => {
   try {
     const userDocRef = doc(db, 'users', user.uid)
     const docSnapshot = await getDoc(userDocRef)
 
     if(!docSnapshot.exists()) {
       await setDoc(userDocRef, {
-        name : DOMPurify.sanitize(user.displayName),
-        email : DOMPurify.sanitize(user.email),
-        userId : DOMPurify.sanitize(user.uid)
+        name: user.displayName,
+        email: user.email,
+        userId: user.uid
       })
     }
   } catch (error) {
     console.log('Erro ao tentar registrar usuário:', error)
   }
+}
 
-  buttonGoogle.removeEventListener('click', login)
-  formAddPhrase.onsubmit = e => addPhrase(e, user)
-
+const renderPhrases = user => {
   const queryPhrases = query(collectionPhrases, where('userId', '==', user.uid))
   
-  const unsubscribe = onSnapshot(queryPhrases, snapshot => {
+  return onSnapshot(queryPhrases, snapshot => {
     const documentFragment = document.createDocumentFragment()
 
     snapshot.docChanges().forEach(docChange => {
@@ -149,12 +151,37 @@ const handleAuthStateChanged = async user => {
       documentFragment.append(liPhrase)
     })
 
-    buttonLogout.onclick = () => logout(unsubscribe)
     phrasesList.append(documentFragment)
-    accountDetails.textContent = DOMPurify.sanitize(`${user.displayName} | ${user.email}`)
-    accountDetailsContainer.append(accountDetails)
   })
+}
+
+const handleSignedUser = async user => {
+  createUserDocument(user)
+  buttonGoogle.removeEventListener('click', login)
+  formAddPhrase.onsubmit = e => addPhrase(e, user)
+
+  const unsubscribe = renderPhrases(user)
+
+  buttonLogout.onclick = () => logout(unsubscribe)
   initCollapsibles()
+  accountDetails.textContent = `${user.displayName} | ${user.email}`
+  accountDetailsContainer.append(accountDetails)
+}
+
+const handleAuthStateChanged = async user => {
+  renderLinks({userExists : Boolean(user)})
+  removeLoginMessage()
+  
+  if (!user) {
+   handleAnonymousUser()
+   return 
+  }
+
+  handleSignedUser({
+    displayName: DOMPurify.sanitize(user.displayName),
+    email: DOMPurify.sanitize(user.email),
+    uid: DOMPurify.sanitize(user.uid)
+  })
 }
 
 onAuthStateChanged(auth, handleAuthStateChanged)
