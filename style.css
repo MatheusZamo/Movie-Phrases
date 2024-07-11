@@ -1,5 +1,5 @@
 .phrases-container {
-  margin-top: 40px;
+  margin-top: 75px;
 }
 
 .phrases {
@@ -38,6 +38,9 @@
   color: #fff;
 }
 
-.modal-login {
-  display:block
+
+@media only screen and (max-width: 992px) {
+  .hide-on-med-and-down {
+    display: block !important;
+  }
 }
