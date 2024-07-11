@@ -1,5 +1,5 @@
 .phrases-container {
-  margin-top: 80px;
+  margin-top: 75px;
 }
 
 .phrases {
@@ -38,9 +38,18 @@
   color: #fff;
 }
 
+.collapsible-header {
+  justify-content: space-between;
+}
+
+.collapsible-header i {
+  margin-right: 0;
+}
+
 
 @media only screen and (max-width: 992px) {
   .hide-on-med-and-down {
     display: block !important;
   }
 }
+
