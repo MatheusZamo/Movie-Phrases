@@ -140,13 +140,22 @@ const renderPhrases = user => {
       const liPhrase = document.createElement('li')
       const movieTitleContainer = document.createElement('div')
       const phraseContainer = document.createElement('div')
+      const deleteButton = document.createElement('button')
+      const icon = document.createElement('i')
       const { movieTitle, phrase } = docChange.doc.data()
 
       movieTitleContainer.textContent = DOMPurify.sanitize(movieTitle)
       phraseContainer.textContent = DOMPurify.sanitize(phrase)
+      icon.textContent = 'delete_forever'
       movieTitleContainer.setAttribute('class','collapsible-header blue-grey-text text-lighten-5 blue-grey darken-4')
       phraseContainer.setAttribute('class','collapsible-body blue-grey-text text-lighten-5 blue-grey darken-3')
+      deleteButton.setAttribute('class','waves-effect waves-red btn red darken-1 btn-small')
+      icon.setAttribute('class','material-icons')
 
+      console.log(docChange.doc.id)
+      console.log(liPhrase)
+      deleteButton.append(icon)
+      movieTitleContainer.append(deleteButton)
       liPhrase.append(movieTitleContainer, phraseContainer)
       documentFragment.append(liPhrase)
     })
@@ -187,3 +196,5 @@ const handleAuthStateChanged = async user => {
 onAuthStateChanged(auth, handleAuthStateChanged)
 
 initModals()
+
+
