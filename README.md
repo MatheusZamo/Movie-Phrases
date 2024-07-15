@@ -1,3 +1,4 @@
+![Screenshot 2024-07-15 at 10-55-15 Firebase Auth](https://github.com/user-attachments/assets/de895d05-6905-4968-8640-1b33fd175537)
 # Movie Phrases
 
 Uma aplicação web para gerenciar frases de filmes, desenvolvida com JavaScript, Materialize CSS, DOMPurify e Firebase.
