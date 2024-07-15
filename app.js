@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-app.js"
-import { getFirestore, collection, addDoc, doc, getDoc, setDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js"
+import { getFirestore, collection, addDoc, doc, getDoc, deleteDoc, setDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js"
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-auth.js"
 
 const firebaseConfig = {
@@ -24,6 +24,7 @@ const phrasesList = document.querySelector('[data-js="phrases-list"]')
 const formAddPhrase = document.querySelector('[  data-js="add-phrase-form"]')
 const accountDetailsContainer = document.querySelector('[data-js="account-details"]')
 const accountDetails = document.createElement('p')
+
 
 const closeModalAddPhrase = () => {
   const modalAddPhrase = document.querySelector('[data-modal="add-phrase"]')
@@ -129,7 +130,7 @@ const createUserDocument = async user => {
     console.log('Erro ao tentar registrar usuário:', error)
   }
 }
-
+    
 const renderPhrases = user => {
   const queryPhrases = query(collectionPhrases, where('userId', '==', user.uid))
   
@@ -142,8 +143,14 @@ const renderPhrases = user => {
       const phraseContainer = document.createElement('div')
       const deleteButton = document.createElement('button')
       const icon = document.createElement('i')
-      const { movieTitle, phrase } = docChange.doc.data()
+      const [id,{ movieTitle, phrase }] = [docChange.doc.id, docChange.doc.data()]
 
+      if (docChange.type === 'removed') {
+        const liPhrase = document.querySelector(`[data-li="${id}"]`)
+        liPhrase.parentElement.remove()
+        return
+      }
+      
       movieTitleContainer.textContent = DOMPurify.sanitize(movieTitle)
       phraseContainer.textContent = DOMPurify.sanitize(phrase)
       icon.textContent = 'delete_forever'
@@ -152,8 +159,10 @@ const renderPhrases = user => {
       deleteButton.setAttribute('class','waves-effect waves-red btn red darken-1 btn-small')
       icon.setAttribute('class','material-icons')
 
-      console.log(docChange.doc.id)
-      console.log(liPhrase)
+      movieTitleContainer.setAttribute('data-li',id)
+      deleteButton.setAttribute('data-trash',id)
+      icon.setAttribute('data-trash',id)
+    
       deleteButton.append(icon)
       movieTitleContainer.append(deleteButton)
       liPhrase.append(movieTitleContainer, phraseContainer)
@@ -164,11 +173,25 @@ const renderPhrases = user => {
   })
 }
 
+const deletePhrase = async e => {
+  const dataTrash = e.target.dataset.trash
+
+  if(!dataTrash){
+    return
+  }
+
+  try {
+    await deleteDoc(doc(collectionPhrases, dataTrash))
+  } catch (error) {
+    console.log(error)
+  }
+} 
+
 const handleSignedUser = async user => {
   createUserDocument(user)
   buttonGoogle.removeEventListener('click', login)
+  phrasesList.addEventListener('click', deletePhrase)
   formAddPhrase.onsubmit = e => addPhrase(e, user)
-
   const unsubscribe = renderPhrases(user)
 
   buttonLogout.onclick = () => logout(unsubscribe)
@@ -194,7 +217,4 @@ const handleAuthStateChanged = async user => {
 }
 
 onAuthStateChanged(auth, handleAuthStateChanged)
-
 initModals()
-
-
