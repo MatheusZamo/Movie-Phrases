@@ -1,3 +1,7 @@
+# Movie Phrases
+
+Uma aplicação web para gerenciar frases de filmes, desenvolvida com JavaScript, Materialize CSS, DOMPurify e Firebase.
+
 ## Descrição do Projeto
 
 O Movie Phrases é uma aplicação web onde os usuários podem adicionar e excluir frases de filmes. As frases são persistidas no Firestore, e o login é feito diretamente com o Google Authentication, oferecendo uma experiência de login rápida e segura.
